@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Native, no-container installer for the flow-intelligence POC.
-# Target: Ubuntu/Debian-style internal POC server.
+# Target: RHEL-compatible or Ubuntu/Debian-style internal POC server.
 # Installs: ClickHouse, Kafka, goflow2, Grafana, Python scripts, systemd services, cron.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -39,11 +39,74 @@ else
 fi
 
 case "${ID:-}" in
-  ubuntu|debian) ;;
-  *) warn "This installer is tested for Ubuntu/Debian. Detected ID=${ID:-unknown}. Continuing best-effort." ;;
+  ubuntu|debian) OS_FAMILY="debian" ;;
+  rhel|centos|rocky|almalinux|ol|fedora) OS_FAMILY="rhel" ;;
+  *) fail "Unsupported OS ID=${ID:-unknown}. Use Ubuntu/Debian or RHEL-compatible Linux." ;;
 esac
 
 export DEBIAN_FRONTEND=noninteractive
+
+install_base_packages() {
+  if [ "$OS_FAMILY" = "debian" ]; then
+    apt-get update
+    apt-get install -y ca-certificates curl gnupg lsb-release apt-transport-https jq openjdk-21-jre-headless python3 python3-venv python3-pip cron tar gzip file
+  else
+    dnf install -y ca-certificates curl gnupg2 jq java-17-openjdk-headless python3 python3-pip cronie tar gzip file shadow-utils
+  fi
+}
+
+install_clickhouse() {
+  if [ "$OS_FAMILY" = "debian" ]; then
+    install -d -m 0755 /etc/apt/keyrings
+    if [ ! -f /etc/apt/keyrings/clickhouse.gpg ]; then
+      curl -fsSL https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key | gpg --dearmor -o /etc/apt/keyrings/clickhouse.gpg
+    fi
+    cat >/etc/apt/sources.list.d/clickhouse.list <<'EOF'
+deb [signed-by=/etc/apt/keyrings/clickhouse.gpg] https://packages.clickhouse.com/deb stable main
+EOF
+    apt-get update
+    apt-get install -y clickhouse-server clickhouse-client
+  else
+    cat >/etc/yum.repos.d/clickhouse.repo <<'EOF'
+[clickhouse]
+name=ClickHouse - Stable Repository
+baseurl=https://packages.clickhouse.com/rpm/stable/$basearch
+gpgkey=https://packages.clickhouse.com/rpm/stable/repodata/repomd.xml.key
+gpgcheck=1
+enabled=1
+EOF
+    dnf install -y clickhouse-server clickhouse-client
+  fi
+  systemctl enable --now clickhouse-server
+}
+
+install_grafana() {
+  if [ "$OS_FAMILY" = "debian" ]; then
+    install -d -m 0755 /etc/apt/keyrings
+    if [ ! -f /etc/apt/keyrings/grafana.gpg ]; then
+      curl -fsSL https://apt.grafana.com/gpg.key | gpg --dearmor -o /etc/apt/keyrings/grafana.gpg
+    fi
+    cat >/etc/apt/sources.list.d/grafana.list <<'EOF'
+deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main
+EOF
+    apt-get update
+    apt-get install -y grafana
+  else
+    cat >/etc/yum.repos.d/grafana.repo <<'EOF'
+[grafana]
+name=grafana
+baseurl=https://rpm.grafana.com
+gpgcheck=1
+gpgkey=https://rpm.grafana.com/gpg.key
+enabled=1
+EOF
+    dnf install -y grafana
+  fi
+}
+
+cron_service_name() {
+  if [ "$OS_FAMILY" = "debian" ]; then echo cron; else echo crond; fi
+}
 
 log "Creating native deployment env file if needed"
 install -d -m 755 "$DEPLOY_DIR"
@@ -62,20 +125,10 @@ set -a; . "$ENV_FILE"; set +a
 : "${CLICKHOUSE_GRAFANA_PASSWORD:?set in $ENV_FILE}"
 
 log "Installing base packages"
-apt-get update
-apt-get install -y ca-certificates curl gnupg lsb-release apt-transport-https jq openjdk-21-jre-headless python3 python3-venv python3-pip cron
+install_base_packages
 
 log "Installing ClickHouse packages"
-install -d -m 0755 /etc/apt/keyrings
-if [ ! -f /etc/apt/keyrings/clickhouse.asc ]; then
-  curl -fsSL https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key | gpg --dearmor -o /etc/apt/keyrings/clickhouse.gpg
-fi
-cat >/etc/apt/sources.list.d/clickhouse.list <<'EOF'
-deb [signed-by=/etc/apt/keyrings/clickhouse.gpg] https://packages.clickhouse.com/deb stable main
-EOF
-apt-get update
-apt-get install -y clickhouse-server clickhouse-client
-systemctl enable --now clickhouse-server
+install_clickhouse
 
 log "Installing Kafka ${KAFKA_VERSION} under ${KAFKA_HOME}"
 if [ ! -d "$KAFKA_HOME" ]; then
@@ -158,14 +211,7 @@ systemctl daemon-reload
 systemctl enable --now flow-goflow2
 
 log "Installing Grafana OSS"
-if [ ! -f /etc/apt/keyrings/grafana.gpg ]; then
-  curl -fsSL https://apt.grafana.com/gpg.key | gpg --dearmor -o /etc/apt/keyrings/grafana.gpg
-fi
-cat >/etc/apt/sources.list.d/grafana.list <<'EOF'
-deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main
-EOF
-apt-get update
-apt-get install -y grafana
+install_grafana
 install -d -m 755 /etc/grafana/provisioning/datasources /etc/grafana/provisioning/dashboards /var/lib/grafana/dashboards
 cp "$ROOT_DIR"/grafana/dashboards/*.json /var/lib/grafana/dashboards/
 cat >/etc/grafana/provisioning/dashboards/flow-poc.yml <<'EOF'
@@ -236,7 +282,7 @@ cat >> /tmp/flow_poc_cron.new <<'CRON'
 CRON
 crontab /tmp/flow_poc_cron.new
 rm -f /tmp/flow_poc_cron /tmp/flow_poc_cron.new
-systemctl enable --now cron || true
+systemctl enable --now "$(cron_service_name)" || true
 
 log "Running smoke checks"
 systemctl --no-pager --full status clickhouse-server flow-kafka flow-goflow2 grafana-server >/dev/null || true

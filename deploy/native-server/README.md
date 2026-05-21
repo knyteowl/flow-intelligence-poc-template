@@ -1,6 +1,6 @@
 # Native server deployment: no Docker/Podman
 
-Use this path when a container runtime is not available and you want a direct install on an internal Linux server.
+Use this path when a container runtime is not available and you want a direct install on an internal Linux server. The bootstrap supports Ubuntu/Debian and RHEL-compatible distributions.
 
 ## What it installs
 
