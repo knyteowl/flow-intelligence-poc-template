@@ -1,0 +1,448 @@
+{
+  "uid": "flow-device-drilldown",
+  "title": "Flow Device Drilldown",
+  "tags": [
+    "flow-poc",
+    "device",
+    "drilldown"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "device",
+        "type": "query",
+        "label": "Device",
+        "datasource": {
+          "type": "grafana-clickhouse-datasource",
+          "uid": "clickhouse-flow-poc"
+        },
+        "refresh": 1,
+        "sort": 0,
+        "query": "SELECT src_addr\nFROM\n(\n  SELECT src_addr, sum(bytes) AS total_bytes\n  FROM flow_poc.flows_enriched\n  WHERE received_at >= now() - INTERVAL 24 HOUR\n    AND (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR match(src_addr, '^172\\.(1[6-9]|2[0-9]|3[01])\\.'))\n  GROUP BY src_addr\n)\nORDER BY total_bytes DESC",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "includeAll": false,
+        "multi": false,
+        "definition": "SELECT src_addr\nFROM\n(\n  SELECT src_addr, sum(bytes) AS total_bytes\n  FROM flow_poc.flows_enriched\n  WHERE received_at >= now() - INTERVAL 24 HOUR\n    AND (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR match(src_addr, '^172\\.(1[6-9]|2[0-9]|3[01])\\.'))\n  GROUP BY src_addr\n)\nORDER BY total_bytes DESC",
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Device Throughput \u2014 1h Rollup",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "rawSql": "SELECT\n    bucket_start AS time,\n    sum(bytes) * 8 / 3600 AS bits_per_sec\nFROM flow_poc.flow_rollup_1h\nWHERE $__timeFilter(bucket_start)\n  AND (src_addr=${device:singlequote} OR dst_addr=${device:singlequote})\nGROUP BY time\nORDER BY time\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Stable device throughput from flow_rollup_1h: sum(bytes) * 8 / 3600. This intentionally uses hourly rollups to avoid IPFIX active-timeout artifacts in raw/5m flow records."
+    },
+    {
+      "id": 2,
+      "title": "Device Flows/sec",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "rawSql": "\nSELECT toStartOfInterval(received_at, INTERVAL 30 SECOND) AS time, count() / 30 AS flows_per_sec\nFROM flow_poc.flows_enriched_external\nWHERE $__timeFilter(received_at) AND (src_addr=${device:singlequote} OR dst_addr=${device:singlequote})\nGROUP BY time ORDER BY time\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "UDP/443 QUIC Throughput",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "rawSql": "SELECT time, sum(bits_per_sec) AS bits_per_sec\nFROM\n(\n    SELECT\n        toDateTime(toUnixTimestamp(toStartOfInterval(flow_start, INTERVAL 30 SECOND)) + bucket_index * 30) AS time,\n        bytes * 8 / greatest(dateDiff('second', flow_start, flow_end), 1) AS bits_per_sec\n    FROM flow_poc.flows_enriched_external\n    ARRAY JOIN range(toUInt32(greatest(1, intDiv(greatest(dateDiff('second', flow_start, flow_end), 1) + 29, 30)))) AS bucket_index\n    WHERE flow_end >= $__fromTime AND flow_start <= $__toTime\n      AND (src_addr=${device:singlequote} OR dst_addr=${device:singlequote})\n      AND proto='UDP' AND (dst_port=443 OR src_port=443)\n)\nWHERE $__timeFilter(time)\nGROUP BY time\nORDER BY time\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Duration-spread throughput: each flow is converted to average bps using flow_start/flow_end and spread across every 30-second bucket touched by the flow. This avoids active-timeout exports appearing as spikes at received_at or flow_start."
+    },
+    {
+      "id": 4,
+      "title": "Current Hour vs Baseline",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_name, src_addr, bytes AS current_bytes, formatReadableSize(bytes) AS current_readable, baseline_buckets, formatReadableSize(avg_bytes) AS avg_readable, formatReadableSize(p95_bytes) AS p95_readable, ratio_to_avg, ratio_to_p95\nFROM flow_poc.v_current_hour_device_vs_baseline\nWHERE src_addr=${device:singlequote}\nORDER BY current_bytes DESC\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "title": "Top External Destinations",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT dst_org_or_name AS dst_name, dst_addr, proto, dst_port, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows, sum(packets) AS packets\nFROM flow_poc.flows_enriched_external\nWHERE $__timeFilter(received_at) AND src_addr=${device:singlequote}\n  AND NOT (startsWith(dst_addr,'10.') OR startsWith(dst_addr,'192.168.') OR match(dst_addr, '^172\\\\.(1[6-9]|2[0-9]|3[01])\\\\.'))\nGROUP BY dst_name, dst_addr, proto, dst_port\nORDER BY total_bytes DESC LIMIT 25\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "title": "Top Conversations",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_org_or_name AS src_name, src_addr, dst_org_or_name AS dst_name, dst_addr, proto, dst_port, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows, sum(packets) AS packets\nFROM flow_poc.flows_enriched_external\nWHERE $__timeFilter(received_at) AND (src_addr=${device:singlequote} OR dst_addr=${device:singlequote})\nGROUP BY src_name, src_addr, dst_name, dst_addr, proto, dst_port\nORDER BY total_bytes DESC LIMIT 25\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "title": "Top Destination Ports",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT proto, dst_port, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows, sum(packets) AS packets\nFROM flow_poc.flows_enriched_external\nWHERE $__timeFilter(received_at) AND src_addr=${device:singlequote}\nGROUP BY proto, dst_port ORDER BY total_bytes DESC LIMIT 20\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "title": "Hourly Device Rollup",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "rawSql": "\nSELECT bucket_start AS time, sum(bytes) * 8 / 3600 AS bits_per_sec\nFROM flow_poc.v_rollup_device_1h\nWHERE $__timeFilter(bucket_start) AND src_addr=${device:singlequote}\nGROUP BY time ORDER BY time\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "title": "New External Destinations",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_name, dst_name, dst_addr, proto, dst_port, recent_bytes AS total_bytes, formatReadableSize(recent_bytes) AS readable_bytes, recent_flows\nFROM flow_poc.v_recent_new_external_destinations\nWHERE src_addr=${device:singlequote}\nORDER BY total_bytes DESC LIMIT 25\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "title": "SSH Activity",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_org_or_name AS src_name, src_addr, dst_org_or_name AS dst_name, dst_addr, proto, src_port, dst_port, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows\nFROM flow_poc.flows_enriched_external\nWHERE $__timeFilter(received_at) AND (src_addr=${device:singlequote} OR dst_addr=${device:singlequote}) AND (src_port=22 OR dst_port=22)\nGROUP BY src_name, src_addr, dst_name, dst_addr, proto, src_port, dst_port\nORDER BY total_bytes DESC LIMIT 25\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    }
+  ]
+}

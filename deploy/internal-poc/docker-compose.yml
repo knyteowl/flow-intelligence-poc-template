@@ -1,0 +1,76 @@
+services:
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: flow-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://${KAFKA_EXTERNAL_HOST:-127.0.0.1}:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_LOG_RETENTION_HOURS: ${KAFKA_LOG_RETENTION_HOURS:-24}
+    ports:
+      - "127.0.0.1:9094:9094"
+    volumes:
+      - kafka_data:/tmp/kraft-combined-logs
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: flow-clickhouse
+    restart: unless-stopped
+    environment:
+      TZ: UTC
+    ports:
+      - "127.0.0.1:8123:8123"
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+
+  goflow2:
+    image: netsampler/goflow2:latest
+    container_name: flow-goflow2
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    command:
+      - -listen=netflow://:2056
+      - -format=json
+      - -transport=kafka
+      - -transport.kafka.brokers=kafka:9092
+      - -transport.kafka.topic=flows.raw
+    ports:
+      - "${NETFLOW_LISTEN_PORT:-2056}:2056/udp"
+
+  grafana:
+    image: grafana/grafana-oss:11.3.0
+    container_name: flow-grafana
+    restart: unless-stopped
+    depends_on:
+      - clickhouse
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set in .env}
+      GF_INSTALL_PLUGINS: grafana-clickhouse-datasource
+    ports:
+      - "${GRAFANA_BIND_ADDR:-127.0.0.1}:${GRAFANA_PORT:-3001}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+volumes:
+  kafka_data:
+  clickhouse_data:
+  clickhouse_logs:
+  grafana_data:

@@ -1,0 +1,617 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT time, sum(bits_per_sec) AS bits_per_sec\nFROM\n(\n    SELECT\n        toDateTime(toUnixTimestamp(toStartOfInterval(flow_start, INTERVAL 30 SECOND)) + bucket_index * 30) AS time,\n        bytes * 8 / greatest(dateDiff('second', flow_start, flow_end), 1) AS bits_per_sec\n    FROM flow_poc.flows_enriched_external\n    ARRAY JOIN range(toUInt32(greatest(1, intDiv(greatest(dateDiff('second', flow_start, flow_end), 1) + 29, 30)))) AS bucket_index\n    WHERE flow_end >= $__fromTime AND flow_start <= $__toTime\n)\nWHERE $__timeFilter(time)\nGROUP BY time\nORDER BY time\n"
+        }
+      ],
+      "title": "Observed Traffic Throughput",
+      "type": "timeseries",
+      "description": "Duration-spread throughput: each flow is converted to average bps using flow_start/flow_end and spread across every 30-second bucket touched by the flow. This avoids active-timeout exports appearing as spikes at received_at or flow_start."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT src_name, src_addr, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY src_name, src_addr ORDER BY total_bytes DESC LIMIT 10"
+        }
+      ],
+      "title": "Top Talkers",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT dst_name, dst_addr, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY dst_name, dst_addr ORDER BY total_bytes DESC LIMIT 10"
+        }
+      ],
+      "title": "Top Destinations",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT received_at, src_name, src_addr, dst_name, dst_addr, proto, src_port, dst_port, bytes, packets FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) ORDER BY received_at DESC LIMIT 50"
+        }
+      ],
+      "title": "Recent Flows",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT toStartOfInterval(received_at, INTERVAL 30 SECOND) AS time, count() / 30 AS flows_per_sec FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY time ORDER BY time"
+        }
+      ],
+      "title": "Flow Records/sec",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT toStartOfInterval(received_at, INTERVAL 30 SECOND) AS time, sum(packets) / 30 AS packets_per_sec FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY time ORDER BY time"
+        }
+      ],
+      "title": "Packets/sec",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "id": 7,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT src_name AS device, src_addr, src_device_type, src_vendor, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows, sum(packets) AS packets FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) AND (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR startsWith(src_addr,'172.16.') OR startsWith(src_addr,'172.17.') OR startsWith(src_addr,'172.18.') OR startsWith(src_addr,'172.19.') OR startsWith(src_addr,'172.2') OR startsWith(src_addr,'172.30.') OR startsWith(src_addr,'172.31.')) GROUP BY device, src_addr, src_device_type, src_vendor ORDER BY total_bytes DESC LIMIT 20"
+        }
+      ],
+      "title": "Top Internal Sources",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 8,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT src_org_or_name AS src_name, src_addr, dst_org_or_name AS dst_name, dst_addr, dst_port, proto, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows, sum(packets) AS packets FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY src_name, src_addr, dst_name, dst_addr, dst_port, proto ORDER BY total_bytes DESC LIMIT 25"
+        }
+      ],
+      "title": "Top Conversations",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 9,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT dst_port, proto, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows, sum(packets) AS packets FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY dst_port, proto ORDER BY total_bytes DESC LIMIT 20"
+        }
+      ],
+      "title": "Top Destination Ports",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT time, sum(bits_per_sec) AS bits_per_sec\nFROM\n(\n    SELECT\n        toDateTime(toUnixTimestamp(toStartOfInterval(flow_start, INTERVAL 30 SECOND)) + bucket_index * 30) AS time,\n        bytes * 8 / greatest(dateDiff('second', flow_start, flow_end), 1) AS bits_per_sec\n    FROM flow_poc.flows_enriched_external\n    ARRAY JOIN range(toUInt32(greatest(1, intDiv(greatest(dateDiff('second', flow_start, flow_end), 1) + 29, 30)))) AS bucket_index\n    WHERE flow_end >= $__fromTime AND flow_start <= $__toTime\n      AND proto='UDP' AND (dst_port=443 OR src_port=443)\n)\nWHERE $__timeFilter(time)\nGROUP BY time\nORDER BY time\n"
+        }
+      ],
+      "title": "UDP/443 QUIC Volume",
+      "type": "timeseries",
+      "description": "Duration-spread throughput: each flow is converted to average bps using flow_start/flow_end and spread across every 30-second bucket touched by the flow. This avoids active-timeout exports appearing as spikes at received_at or flow_start."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "id": 11,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT ip, name AS device, device_type, vendor, network, source, last_seen FROM flow_poc.device_inventory_current ORDER BY ip"
+        }
+      ],
+      "title": "Traffic by Known Device",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "id": 12,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT src_org_or_name AS src_name, src_addr, dst_org_or_name AS dst_name, dst_addr, dst_port, proto, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows, sum(packets) AS packets FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) AND (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR startsWith(src_addr,'172.16.') OR startsWith(src_addr,'172.17.') OR startsWith(src_addr,'172.18.') OR startsWith(src_addr,'172.19.') OR startsWith(src_addr,'172.2') OR startsWith(src_addr,'172.30.') OR startsWith(src_addr,'172.31.')) AND NOT (startsWith(dst_addr,'10.') OR startsWith(dst_addr,'192.168.') OR startsWith(dst_addr,'172.16.') OR startsWith(dst_addr,'172.17.') OR startsWith(dst_addr,'172.18.') OR startsWith(dst_addr,'172.19.') OR startsWith(dst_addr,'172.2') OR startsWith(dst_addr,'172.30.') OR startsWith(dst_addr,'172.31.')) GROUP BY src_name, src_addr, dst_name, dst_addr, dst_port, proto ORDER BY total_bytes DESC LIMIT 25"
+        }
+      ],
+      "title": "Large Outbound Transfers",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT toStartOfInterval(received_at, INTERVAL 30 SECOND) AS time, count() / 30 AS rows_per_sec FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY time ORDER BY time"
+        }
+      ],
+      "title": "ClickHouse Rows/sec",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 48
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT toStartOfInterval(received_at, INTERVAL 30 SECOND) AS time, countDistinct(sampler_address) AS exporters FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY time ORDER BY time"
+        }
+      ],
+      "title": "Exporter Count",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 56
+      },
+      "id": 15,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT src_org_or_name AS src_name, src_addr, dst_org_or_name AS dst_name, dst_addr, dst_port, proto, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) AND (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR startsWith(src_addr,'172.16.') OR startsWith(src_addr,'172.17.') OR startsWith(src_addr,'172.18.') OR startsWith(src_addr,'172.19.') OR startsWith(src_addr,'172.2') OR startsWith(src_addr,'172.30.') OR startsWith(src_addr,'172.31.')) AND NOT (startsWith(dst_addr,'10.') OR startsWith(dst_addr,'192.168.') OR startsWith(dst_addr,'172.16.') OR startsWith(dst_addr,'172.17.') OR startsWith(dst_addr,'172.18.') OR startsWith(dst_addr,'172.19.') OR startsWith(dst_addr,'172.2') OR startsWith(dst_addr,'172.30.') OR startsWith(dst_addr,'172.31.')) AND dst_port NOT IN (80,443,53,123,22) GROUP BY src_name, src_addr, dst_name, dst_addr, dst_port, proto ORDER BY total_bytes DESC LIMIT 25"
+        }
+      ],
+      "title": "Non-Standard External Ports",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 56
+      },
+      "id": 16,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT src_org_or_name AS src_name, src_addr, dst_org_or_name AS dst_name, dst_addr, src_port, dst_port, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) AND (src_port=22 OR dst_port=22) GROUP BY src_name, src_addr, dst_name, dst_addr, src_port, dst_port ORDER BY total_bytes DESC LIMIT 25"
+        }
+      ],
+      "title": "SSH Activity",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "flows",
+    "poc",
+    "clickhouse"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Flow POC",
+  "uid": "flow-poc",
+  "version": 5,
+  "weekStart": ""
+}

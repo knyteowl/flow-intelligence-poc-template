@@ -1,0 +1,334 @@
+{
+  "uid": "flow-security-anomalies",
+  "title": "Flow Security / Anomaly",
+  "tags": [
+    "flow-poc",
+    "security",
+    "anomaly"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Baseline Risk Inputs",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_name, src_addr, bytes AS current_bytes, formatReadableSize(bytes) AS current_readable, baseline_buckets, formatReadableSize(p95_bytes) AS p95_readable, ratio_to_p95, flows\nFROM flow_poc.v_current_hour_device_vs_baseline\nORDER BY ifNull(ratio_to_p95,0) DESC, current_bytes DESC LIMIT 25\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "New External Destinations \u2014 Last 1h",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_name, src_addr, dst_org_or_name AS dst_name, dst_addr, proto, dst_port, recent_bytes AS total_bytes, formatReadableSize(recent_bytes) AS readable_bytes, recent_flows\nFROM flow_poc.v_recent_new_external_destinations\nORDER BY total_bytes DESC LIMIT 50\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "title": "New Destination Ports \u2014 Last 1h",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_name, src_addr, proto, dst_port, recent_bytes AS total_bytes, formatReadableSize(recent_bytes) AS readable_bytes, recent_flows\nFROM flow_poc.v_recent_new_dst_ports\nORDER BY total_bytes DESC LIMIT 50\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "title": "Large Outbound Transfers",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_org_or_name AS src_name, src_addr, dst_org_or_name AS dst_name, dst_addr, proto, dst_port, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows, sum(packets) AS packets\nFROM flow_poc.flows_enriched_external\nWHERE $__timeFilter(received_at)\n  AND (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR match(src_addr, '^172\\\\.(1[6-9]|2[0-9]|3[01])\\\\.'))\n  AND NOT (startsWith(dst_addr,'10.') OR startsWith(dst_addr,'192.168.') OR match(dst_addr, '^172\\\\.(1[6-9]|2[0-9]|3[01])\\\\.'))\nGROUP BY src_name, src_addr, dst_name, dst_addr, proto, dst_port\nORDER BY total_bytes DESC LIMIT 50\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "title": "Non-Standard External Ports",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_org_or_name AS src_name, src_addr, dst_org_or_name AS dst_name, dst_addr, proto, dst_port, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows\nFROM flow_poc.flows_enriched_external\nWHERE $__timeFilter(received_at)\n  AND (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR match(src_addr, '^172\\\\.(1[6-9]|2[0-9]|3[01])\\\\.'))\n  AND NOT (startsWith(dst_addr,'10.') OR startsWith(dst_addr,'192.168.') OR match(dst_addr, '^172\\\\.(1[6-9]|2[0-9]|3[01])\\\\.'))\n  AND dst_port NOT IN (80,443,53,123,22)\nGROUP BY src_name, src_addr, dst_name, dst_addr, proto, dst_port\nORDER BY total_bytes DESC LIMIT 50\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "title": "SSH Activity",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_org_or_name AS src_name, src_addr, dst_org_or_name AS dst_name, dst_addr, proto, src_port, dst_port, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows\nFROM flow_poc.flows_enriched_external\nWHERE $__timeFilter(received_at) AND (src_port=22 OR dst_port=22)\nGROUP BY src_name, src_addr, dst_name, dst_addr, proto, src_port, dst_port\nORDER BY total_bytes DESC LIMIT 50\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "title": "High Flow Count Sources",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_name, src_addr, count() AS flows, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, sum(packets) AS packets\nFROM flow_poc.flows_enriched_external\nWHERE $__timeFilter(received_at)\n  AND (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR match(src_addr, '^172\\\\.(1[6-9]|2[0-9]|3[01])\\\\.'))\nGROUP BY src_name, src_addr\nORDER BY flows DESC LIMIT 25\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "title": "UDP/443 QUIC by Device",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT src_name, src_addr, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows\nFROM flow_poc.flows_enriched_external\nWHERE $__timeFilter(received_at) AND proto='UDP' AND (dst_port=443 OR src_port=443)\n  AND (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR match(src_addr, '^172\\\\.(1[6-9]|2[0-9]|3[01])\\\\.'))\nGROUP BY src_name, src_addr ORDER BY total_bytes DESC LIMIT 25\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,432 @@
+{
+  "uid": "flow-pipeline-health",
+  "title": "Flow Pipeline Health",
+  "tags": [
+    "flow-poc",
+    "pipeline",
+    "health"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Ingest Lag Seconds",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT dateDiff('second', max(received_at), now()) AS ingest_lag_seconds FROM flow_poc.flows_enriched WHERE received_at > now() - INTERVAL 1 DAY\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Exporter Count",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT uniqExact(sampler_address) AS exporters FROM flow_poc.flows_enriched WHERE received_at > now() - INTERVAL 15 MINUTE\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "title": "UniFi Inventory Count",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT count() AS devices FROM flow_poc.device_inventory_current\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Latest Inventory Age Seconds",
+      "type": "stat",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT dateDiff('second', max(latest_updated_at), now()) AS inventory_age_seconds FROM flow_poc.device_inventory_current\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Flow Records/sec",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "rawSql": "\nSELECT toStartOfInterval(received_at, INTERVAL 30 SECOND) AS time, count() / 30 AS flows_per_sec\nFROM flow_poc.flows_enriched\nWHERE $__timeFilter(received_at)\nGROUP BY time ORDER BY time\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Observed Throughput",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "rawSql": "SELECT time, sum(bits_per_sec) AS bits_per_sec\nFROM\n(\n    SELECT\n        toDateTime(toUnixTimestamp(toStartOfInterval(flow_start, INTERVAL 30 SECOND)) + bucket_index * 30) AS time,\n        bytes * 8 / greatest(dateDiff('second', flow_start, flow_end), 1) AS bits_per_sec\n    FROM flow_poc.flows_enriched\n    ARRAY JOIN range(toUInt32(greatest(1, intDiv(greatest(dateDiff('second', flow_start, flow_end), 1) + 29, 30)))) AS bucket_index\n    WHERE flow_end >= $__fromTime AND flow_start <= $__toTime\n)\nWHERE $__timeFilter(time)\nGROUP BY time\nORDER BY time\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Duration-spread throughput: each flow is converted to average bps using flow_start/flow_end and spread across every 30-second bucket touched by the flow. This avoids active-timeout exports appearing as spikes at received_at or flow_start."
+    },
+    {
+      "id": 7,
+      "title": "Exporter Count Over Time",
+      "type": "timeseries",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "rawSql": "\nSELECT toStartOfInterval(received_at, INTERVAL 30 SECOND) AS time, uniqExact(sampler_address) AS exporters\nFROM flow_poc.flows_enriched\nWHERE $__timeFilter(received_at)\nGROUP BY time ORDER BY time\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Rollup Freshness",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT '5m' AS rollup, toString(max(bucket_start)) AS latest_bucket, dateDiff('second', max(bucket_start), now()) AS age_seconds, count() AS rows FROM flow_poc.flow_rollup_5m FINAL\nUNION ALL\nSELECT '1h' AS rollup, toString(max(bucket_start)) AS latest_bucket, dateDiff('second', max(bucket_start), now()) AS age_seconds, count() AS rows FROM flow_poc.flow_rollup_1h FINAL\nUNION ALL\nSELECT '1d' AS rollup, toString(max(bucket_start)) AS latest_bucket, dateDiff('second', toDateTime(max(bucket_start)), now()) AS age_seconds, count() AS rows FROM flow_poc.flow_rollup_1d FINAL\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "title": "Rollup Row Counts",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "\nSELECT '5m' AS rollup, count() AS rows, formatReadableSize(sum(bytes)) AS readable_bytes FROM flow_poc.flow_rollup_5m FINAL\nUNION ALL\nSELECT '1h' AS rollup, count() AS rows, formatReadableSize(sum(bytes)) AS readable_bytes FROM flow_poc.flow_rollup_1h FINAL\nUNION ALL\nSELECT '1d' AS rollup, count() AS rows, formatReadableSize(sum(bytes)) AS readable_bytes FROM flow_poc.flow_rollup_1d FINAL\n",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "title": "ClickHouse Flow Table Counts",
+      "type": "table",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "rawSql": "SELECT 'flows' AS table_name, count() AS rows, formatReadableSize(sum(bytes)) AS observed_bytes FROM flow_poc.flows\nUNION ALL\nSELECT 'flow_rollup_5m' AS table_name, count() AS rows, formatReadableSize(sum(bytes)) AS observed_bytes FROM flow_poc.flow_rollup_5m FINAL\nUNION ALL\nSELECT 'flow_rollup_1h' AS table_name, count() AS rows, formatReadableSize(sum(bytes)) AS observed_bytes FROM flow_poc.flow_rollup_1h FINAL\nUNION ALL\nSELECT 'flow_rollup_1d' AS table_name, count() AS rows, formatReadableSize(sum(bytes)) AS observed_bytes FROM flow_poc.flow_rollup_1d FINAL",
+          "queryType": "sql"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "total_bytes"
+          }
+        ]
+      }
+    }
+  ]
+}
