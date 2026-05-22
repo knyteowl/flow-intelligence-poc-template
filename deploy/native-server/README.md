@@ -33,18 +33,19 @@ cd flow-intelligence-poc && sudo deploy/native-server/bootstrap.sh
 
 That is the cleanest internal-server command because it uses the checked-out repo contents.
 
-## One-line install via GitHub token
+## One-line install via GitHub
 
-Because this repo is private, a true remote one-liner needs a token with read access:
+For a public template repo, use the raw GitHub URL directly. Replace `<owner-or-org>` and the repo name if you generated your own template copy:
 
 ```bash
-export GITHUB_TOKEN='[REDACTED]'
-curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-  https://raw.githubusercontent.com/<owner-or-org>/flow-intelligence-poc/main/deploy/native-server/bootstrap-remote.sh \
-  | sudo GITHUB_TOKEN="$GITHUB_TOKEN" bash
+curl -fsSL \
+  https://raw.githubusercontent.com/<owner-or-org>/flow-intelligence-poc-template/main/deploy/native-server/bootstrap-remote.sh \
+  | sudo bash
 ```
 
-`bootstrap-remote.sh` clones the private repo to `/opt/flow-intelligence-poc-src` and runs `deploy/native-server/bootstrap.sh`.
+For private internal forks, pass a read token explicitly rather than committing credentials to the repo.
+
+`bootstrap-remote.sh` clones the repository to `/opt/flow-intelligence-poc-src` and runs `deploy/native-server/bootstrap.sh`.
 
 ## Defaults
 
@@ -94,7 +95,7 @@ patching responsibility
 
 ## Positioning
 
-Use this when the organization says no to Docker but still wants fast validation:
+Use this when a container runtime is not available but fast validation is still needed:
 
 ```text
 Docker is the cleanest MVP path.
