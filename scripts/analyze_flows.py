@@ -276,7 +276,7 @@ WHERE received_at > now() - INTERVAL 15 MINUTE
             anomalies.append({
                 "severity": "info",
                 "type": "large_outbound_transfer",
-                "message": f"{r.get('src_name') or r.get('src_addr')} sent {readable_bytes(b)} to external {r.get('dst_addr')}:{r.get('dst_port')}/{r.get('proto')}."
+                "message": f"{r.get('src_name') or r.get('src_addr')} sent {readable_bytes(b)} to external {(r.get('dst_name') or r.get('dst_addr'))} ({r.get('dst_addr')}):{r.get('dst_port')}/{r.get('proto')}."
             })
             risk_score += 5
     if nonstandard_external:
