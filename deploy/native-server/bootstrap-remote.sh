@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-https://github.com/example-org/flow-intelligence-poc.git}"
+REPO_URL="${REPO_URL:-https://github.com/knyteowl/flow-intelligence-poc-template.git}"
 DEST="${DEST:-/opt/flow-intelligence-poc-src}"
 BRANCH="${BRANCH:-main}"
 
