@@ -33,20 +33,17 @@ cd flow-intelligence-poc && sudo deploy/native-server/bootstrap.sh
 
 That is the cleanest internal-server command because it uses the checked-out repo contents.
 
-## Remote install from GitHub
+## One-line install via GitHub
 
-Use this when installing directly from a GitHub-hosted template copy or fork. Set `REPO_URL` to the repository that should be cloned onto the server:
+Because this template repo is public, a true remote one-liner can use the raw GitHub URL directly:
 
 ```bash
-export REPO_URL="https://github.com/<owner-or-org>/<repo-name>.git"
 curl -fsSL \
-  "https://raw.githubusercontent.com/<owner-or-org>/<repo-name>/main/deploy/native-server/bootstrap-remote.sh" \
-  | sudo REPO_URL="$REPO_URL" bash
+  https://raw.githubusercontent.com/knyteowl/flow-intelligence-poc-template/main/deploy/native-server/bootstrap-remote.sh \
+  | sudo bash
 ```
 
-For private internal forks, provide `GITHUB_TOKEN` at runtime if the server needs authenticated read access.
-
-`bootstrap-remote.sh` checks out `REPO_URL` into `/opt/flow-intelligence-poc-src` and then runs `deploy/native-server/bootstrap.sh` from that checkout.
+`bootstrap-remote.sh` clones the public template repo to `/opt/flow-intelligence-poc-src` and runs `deploy/native-server/bootstrap.sh`.
 
 ## Defaults
 
