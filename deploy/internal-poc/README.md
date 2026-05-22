@@ -16,7 +16,7 @@ Linux server or VM
 Docker Engine
 Docker Compose plugin
 Outbound DNS/WHOIS access for external IP enrichment, if allowed
-UDP/2056 reachable from selected NetFlow/IPFIX exporters
+UDP/2055 reachable from selected NetFlow/IPFIX exporters
 ```
 
 ## One-command bootstrap
@@ -62,7 +62,7 @@ Point a small number of test exporters at the server:
 ```text
 protocol: NetFlow/IPFIX
 collector: <internal-server-ip>
-UDP port: 2056
+UDP port: 2055
 ```
 
 Document exporter settings:

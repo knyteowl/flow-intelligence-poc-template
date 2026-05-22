@@ -49,7 +49,7 @@ curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
 ## Defaults
 
 ```text
-NetFlow/IPFIX listener: UDP/2056
+NetFlow/IPFIX listener: UDP/2055
 Kafka broker: 127.0.0.1:9092
 ClickHouse native: 127.0.0.1:9000
 Grafana: http://127.0.0.1:3001
@@ -85,7 +85,7 @@ Expected friction points:
 ```text
 root/sudo access
 package repository access
-firewall for UDP/2056
+firewall for UDP/2055
 Grafana access path
 systemd service ownership
 backup/retention

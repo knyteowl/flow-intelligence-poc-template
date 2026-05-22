@@ -97,12 +97,12 @@ rm -f /tmp/flow_poc_cron /tmp/flow_poc_cron.new
 
 echo
 echo "Deployment complete."
-echo "NetFlow/IPFIX UDP listener: ${NETFLOW_LISTEN_PORT:-2056}/udp"
+echo "NetFlow/IPFIX UDP listener: ${NETFLOW_LISTEN_PORT:-2055}/udp"
 echo "Grafana: http://${GRAFANA_BIND_ADDR:-127.0.0.1}:${GRAFANA_PORT:-3001}"
 echo "Grafana user: ${GRAFANA_ADMIN_USER:-admin}"
 echo "Grafana password is in: $ENV_FILE"
 echo
 echo "Next steps:"
-echo "1. Point one test exporter at this server UDP/${NETFLOW_LISTEN_PORT:-2056}."
+echo "1. Point one test exporter at this server UDP/${NETFLOW_LISTEN_PORT:-2055}."
 echo "2. Optional: edit /opt/flow-poc/secrets/unifi.env and run /opt/flow-poc/sync_unifi_devices.py."
 echo "3. Verify: docker exec flow-clickhouse clickhouse-client --query 'SELECT count() FROM flow_poc.flows'"
