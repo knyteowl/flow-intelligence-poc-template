@@ -78,7 +78,7 @@
           },
           "format": 2,
           "queryType": "sql",
-          "rawSql": "SELECT src_name, src_addr, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY src_name, src_addr ORDER BY total_bytes DESC LIMIT 10"
+          "rawSql": "SELECT src_org_or_name AS src_name, src_addr, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY src_name, src_addr ORDER BY total_bytes DESC LIMIT 10"
         }
       ],
       "title": "Top Talkers",
@@ -111,7 +111,7 @@
           },
           "format": 2,
           "queryType": "sql",
-          "rawSql": "SELECT dst_name, dst_addr, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY dst_name, dst_addr ORDER BY total_bytes DESC LIMIT 10"
+          "rawSql": "SELECT dst_org_or_name AS dst_name, dst_addr, sum(bytes) AS total_bytes, formatReadableSize(total_bytes) AS readable_bytes, count() AS flows FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY dst_name, dst_addr ORDER BY total_bytes DESC LIMIT 10"
         }
       ],
       "title": "Top Destinations",
@@ -144,7 +144,7 @@
           },
           "format": 2,
           "queryType": "sql",
-          "rawSql": "SELECT received_at, src_name, src_addr, dst_name, dst_addr, proto, src_port, dst_port, bytes, packets FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) ORDER BY received_at DESC LIMIT 50"
+          "rawSql": "SELECT received_at, src_org_or_name AS src_name, src_addr, dst_org_or_name AS dst_name, dst_addr, proto, src_port, dst_port, bytes, packets FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) ORDER BY received_at DESC LIMIT 50"
         }
       ],
       "title": "Recent Flows",
