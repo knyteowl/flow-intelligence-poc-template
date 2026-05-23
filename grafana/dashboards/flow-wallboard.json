@@ -232,7 +232,26 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "bytes"
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -244,25 +263,21 @@
       },
       "id": 5,
       "options": {
-        "displayLabels": [
-          "percent"
-        ],
         "legend": {
           "displayMode": "hidden",
           "placement": "bottom"
         },
-        "pieType": "donut",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
         "tooltip": {
           "mode": "single",
           "sort": "none"
-        }
+        },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
       },
       "targets": [
         {
@@ -272,12 +287,12 @@
           },
           "format": 2,
           "queryType": "sql",
-          "rawSql": "SELECT side, sum(bytes) AS bytes FROM ( SELECT if((startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR match(src_addr,'^172\\.(1[6-9]|2[0-9]|3[0-1])\\.')), 'LOCAL', 'REMOTE') AS side, bytes FROM flow_poc.flow_rollup_5m FINAL WHERE $__timeFilter(bucket_start) UNION ALL SELECT if((startsWith(dst_addr,'10.') OR startsWith(dst_addr,'192.168.') OR match(dst_addr,'^172\\.(1[6-9]|2[0-9]|3[0-1])\\.')), 'LOCAL', 'REMOTE') AS side, bytes FROM flow_poc.flow_rollup_5m FINAL WHERE $__timeFilter(bucket_start) ) GROUP BY side ORDER BY bytes DESC"
+          "rawSql": "SELECT direction, round(100 * total_bytes / sum(total_bytes) OVER (), 1) AS share_percent\nFROM\n(\n  SELECT direction, sum(bytes) AS total_bytes\n  FROM\n  (\n    SELECT multiIf(\n      (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR match(src_addr,'^172\\.(1[6-9]|2[0-9]|3[0-1])\\.')) AND NOT (startsWith(dst_addr,'10.') OR startsWith(dst_addr,'192.168.') OR match(dst_addr,'^172\\.(1[6-9]|2[0-9]|3[0-1])\\.')), 'OUTBOUND',\n      NOT (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR match(src_addr,'^172\\.(1[6-9]|2[0-9]|3[0-1])\\.')) AND (startsWith(dst_addr,'10.') OR startsWith(dst_addr,'192.168.') OR match(dst_addr,'^172\\.(1[6-9]|2[0-9]|3[0-1])\\.')), 'INBOUND',\n      (startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR match(src_addr,'^172\\.(1[6-9]|2[0-9]|3[0-1])\\.')) AND (startsWith(dst_addr,'10.') OR startsWith(dst_addr,'192.168.') OR match(dst_addr,'^172\\.(1[6-9]|2[0-9]|3[0-1])\\.')), 'INTERNAL',\n      'OTHER'\n    ) AS direction, bytes\n    FROM flow_poc.flow_rollup_5m FINAL\n    WHERE $__timeFilter(bucket_start)\n  )\n  GROUP BY direction\n)\nORDER BY share_percent DESC"
         }
       ],
-      "title": "LOCAL / REMOTE",
-      "type": "piechart",
-      "description": "Visual split of local vs remote endpoints in the selected time range."
+      "title": "DIRECTION MIX",
+      "type": "barchart",
+      "description": "Directional traffic share from flow_rollup_5m. Uses source/destination private-address classification, so operators can quickly see inbound, outbound, or internal dominance."
     },
     {
       "datasource": {
@@ -348,7 +363,26 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "bytes"
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -360,25 +394,21 @@
       },
       "id": 7,
       "options": {
-        "displayLabels": [
-          "percent"
-        ],
         "legend": {
           "displayMode": "hidden",
           "placement": "bottom"
         },
-        "pieType": "donut",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
         "tooltip": {
           "mode": "single",
           "sort": "none"
-        }
+        },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
       },
       "targets": [
         {
@@ -388,12 +418,12 @@
           },
           "format": 2,
           "queryType": "sql",
-          "rawSql": "SELECT proto, sum(bytes) AS bytes FROM flow_poc.flow_rollup_5m FINAL WHERE $__timeFilter(bucket_start) GROUP BY proto ORDER BY bytes DESC LIMIT 6"
+          "rawSql": "SELECT proto, round(100 * total_bytes / sum(total_bytes) OVER (), 1) AS share_percent\nFROM\n(\n  SELECT proto, sum(bytes) AS total_bytes\n  FROM flow_poc.flow_rollup_5m FINAL\n  WHERE $__timeFilter(bucket_start)\n  GROUP BY proto\n)\nORDER BY share_percent DESC\nLIMIT 6"
         }
       ],
       "title": "PROTOCOL MIX",
-      "type": "piechart",
-      "description": "High-level protocol mix by observed bytes."
+      "type": "barchart",
+      "description": "Protocol traffic share from flow_rollup_5m. Rendered as large horizontal bars instead of a donut so it is readable on a wall display."
     },
     {
       "datasource": {
@@ -741,7 +771,26 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "bytes"
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
         },
         "overrides": []
       },
@@ -753,25 +802,21 @@
       },
       "id": 14,
       "options": {
-        "displayLabels": [
-          "percent"
-        ],
         "legend": {
           "displayMode": "hidden",
           "placement": "bottom"
         },
-        "pieType": "pie",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
         "tooltip": {
           "mode": "single",
           "sort": "none"
-        }
+        },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
       },
       "targets": [
         {
@@ -781,12 +826,12 @@
           },
           "format": 2,
           "queryType": "sql",
-          "rawSql": "SELECT concat(proto, '/', toString(dst_port)) AS service, sum(bytes) AS bytes FROM flow_poc.flow_rollup_5m FINAL WHERE $__timeFilter(bucket_start) GROUP BY service ORDER BY bytes DESC LIMIT 5"
+          "rawSql": "SELECT concat(proto, '/', toString(service_port)) AS service, round(100 * total_bytes / sum(total_bytes) OVER (), 1) AS share_percent\nFROM\n(\n  SELECT proto, service_port, sum(bytes) AS total_bytes\n  FROM flow_poc.flow_conversation_5m FINAL\n  WHERE $__timeFilter(bucket_start)\n    AND service_port > 0\n  GROUP BY proto, service_port\n)\nORDER BY share_percent DESC\nLIMIT 6"
         }
       ],
-      "title": "TOP PORT SHARE",
-      "type": "piechart",
-      "description": "Quick visual service concentration view."
+      "title": "SERVICE MIX",
+      "type": "barchart",
+      "description": "Top service-port traffic share from flow_conversation_5m. Uses bidirectional service_port instead of raw destination ports so ephemeral return ports do not dominate the wallboard."
     }
   ],
   "refresh": "1m",
