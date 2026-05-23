@@ -1,0 +1,820 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 100000000
+              },
+              {
+                "color": "red",
+                "value": 500000000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT sum(bytes) * 8 / 300 AS bits_per_sec FROM flow_poc.flow_rollup_5m FINAL WHERE bucket_start >= now() - INTERVAL 5 MINUTE"
+        }
+      ],
+      "title": "FLOW VOLUME",
+      "type": "stat",
+      "description": "Current observed network throughput from the duration-aware 5m rollup."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT bucket_start AS time, sum(bytes) * 8 / 300 AS bits_per_sec FROM flow_poc.flow_rollup_5m FINAL WHERE $__timeFilter(bucket_start) GROUP BY time ORDER BY time"
+        }
+      ],
+      "title": "TRAFFIC TREND",
+      "type": "timeseries",
+      "description": "5m duration-aware traffic trend; no raw flow receive-time spikes."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bool",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT if(dateDiff('second', max(bucket_start), now()) <= 900, 1, 0) AS healthy FROM flow_poc.flow_rollup_5m FINAL"
+        }
+      ],
+      "title": "FLOW HEALTH",
+      "type": "stat",
+      "description": "Green means the 5m flow rollup has updated within 15 minutes."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 5
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0,
+        "showValue": "always",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT if(src_name='', src_addr, src_name) AS source, sum(bytes) * 8 / 300 AS bits_per_sec FROM flow_poc.flow_rollup_5m FINAL WHERE $__timeFilter(bucket_start) GROUP BY source ORDER BY bits_per_sec DESC LIMIT 8"
+        }
+      ],
+      "title": "TOP TALKERS",
+      "type": "barchart",
+      "description": "Largest source talkers by duration-aware 5m throughput."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 5
+      },
+      "id": 5,
+      "options": {
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom"
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT side, sum(bytes) AS bytes FROM ( SELECT if((startsWith(src_addr,'10.') OR startsWith(src_addr,'192.168.') OR match(src_addr,'^172\\.(1[6-9]|2[0-9]|3[0-1])\\.')), 'LOCAL', 'REMOTE') AS side, bytes FROM flow_poc.flow_rollup_5m FINAL WHERE $__timeFilter(bucket_start) UNION ALL SELECT if((startsWith(dst_addr,'10.') OR startsWith(dst_addr,'192.168.') OR match(dst_addr,'^172\\.(1[6-9]|2[0-9]|3[0-1])\\.')), 'LOCAL', 'REMOTE') AS side, bytes FROM flow_poc.flow_rollup_5m FINAL WHERE $__timeFilter(bucket_start) ) GROUP BY side ORDER BY bytes DESC"
+        }
+      ],
+      "title": "LOCAL / REMOTE",
+      "type": "piechart",
+      "description": "Visual split of local vs remote endpoints in the selected time range."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10000
+              },
+              {
+                "color": "red",
+                "value": 50000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 5
+      },
+      "id": 6,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT sum(packets) / 300 AS packets_per_sec FROM flow_poc.flow_rollup_5m FINAL WHERE bucket_start >= now() - INTERVAL 5 MINUTE"
+        }
+      ],
+      "title": "PACKETS",
+      "type": "gauge",
+      "description": "Current packet rate from the duration-aware 5m rollup."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 13
+      },
+      "id": 7,
+      "options": {
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom"
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT proto, sum(bytes) AS bytes FROM flow_poc.flow_rollup_5m FINAL WHERE $__timeFilter(bucket_start) GROUP BY proto ORDER BY bytes DESC LIMIT 6"
+        }
+      ],
+      "title": "PROTOCOL MIX",
+      "type": "piechart",
+      "description": "High-level protocol mix by observed bytes."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 6,
+        "y": 13
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "stacking": "none",
+        "groupWidth": 0.7,
+        "barWidth": 0.9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT concat(proto, '/', toString(dst_port)) AS service, sum(bytes) * 8 / 300 AS bits_per_sec FROM flow_poc.flow_rollup_5m FINAL WHERE $__timeFilter(bucket_start) GROUP BY service ORDER BY bits_per_sec DESC LIMIT 8"
+        }
+      ],
+      "title": "TOP SERVICES",
+      "type": "barchart",
+      "description": "Top destination services by 5m rollup throughput."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 12,
+        "y": 13
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT bucket_start AS time, sum(bytes) * 8 / 300 AS bits_per_sec FROM flow_poc.flow_conversation_5m FINAL WHERE $__timeFilter(bucket_start) AND proto='UDP' AND service_port=443 GROUP BY time ORDER BY time"
+        }
+      ],
+      "title": "QUIC",
+      "type": "timeseries",
+      "description": "UDP/443 throughput from the bidirectional 5m conversation rollup."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 300
+              },
+              {
+                "color": "red",
+                "value": 900
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 13
+      },
+      "id": 10,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT dateDiff('second', max(received_at), now()) AS ingest_lag_seconds FROM flow_poc.flows_enriched WHERE received_at > now() - INTERVAL 1 DAY"
+        }
+      ],
+      "title": "INGEST LAG",
+      "type": "gauge",
+      "description": "Collector freshness telemetry. This is intentionally based on received_at, not traffic volume."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 20
+      },
+      "id": 11,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT uniqExact(sampler_address) AS exporters FROM flow_poc.flows_enriched WHERE received_at > now() - INTERVAL 15 MINUTE"
+        }
+      ],
+      "title": "EXPORTERS",
+      "type": "stat",
+      "description": "Active exporters seen recently. Large visual status tile for wall display."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 900
+              },
+              {
+                "color": "red",
+                "value": 1800
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 20
+      },
+      "id": 12,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT dateDiff('second', max(bucket_start), now()) AS rollup_age_seconds FROM flow_poc.flow_rollup_5m FINAL"
+        }
+      ],
+      "title": "ROLLUP AGE",
+      "type": "stat",
+      "description": "Age of latest 5m rollup bucket. Green means the wallboard traffic data is fresh."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10000
+              },
+              {
+                "color": "red",
+                "value": 50000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 20
+      },
+      "id": 13,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 1,
+          "queryType": "sql",
+          "rawSql": "SELECT sum(flows) AS flows FROM flow_poc.flow_conversation_5m FINAL WHERE bucket_start >= now() - INTERVAL 5 MINUTE"
+        }
+      ],
+      "title": "CONVERSATIONS",
+      "type": "stat",
+      "description": "Recent bidirectional conversation volume from the 5m conversation rollup."
+    },
+    {
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse-flow-poc"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 20
+      },
+      "id": 14,
+      "options": {
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "hidden",
+          "placement": "bottom"
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse-flow-poc"
+          },
+          "format": 2,
+          "queryType": "sql",
+          "rawSql": "SELECT concat(proto, '/', toString(dst_port)) AS service, sum(bytes) AS bytes FROM flow_poc.flow_rollup_5m FINAL WHERE $__timeFilter(bucket_start) GROUP BY service ORDER BY bytes DESC LIMIT 5"
+        }
+      ],
+      "title": "TOP PORT SHARE",
+      "type": "piechart",
+      "description": "Quick visual service concentration view."
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "flow-intelligence",
+    "wallboard",
+    "visual"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m",
+      "15m"
+    ]
+  },
+  "timezone": "browser",
+  "title": "Flow Wallboard \u2014 Visual Status",
+  "uid": "flow-wallboard",
+  "version": 1,
+  "weekStart": ""
+}
