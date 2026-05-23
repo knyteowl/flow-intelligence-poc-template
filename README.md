@@ -60,8 +60,7 @@ Production gaps to address:
 - Authentication/authorization for Grafana and data sources.
 - Secrets management through a vault or platform-native secret store.
 - CI/CD deployment pipeline.
-- Duration-aware short-window rollups for long-lived IPFIX active-timeout flows.
-- Bidirectional conversation model and known-good/watchlist tagging.
+- Known-good/watchlist tagging.
 
 ## Secrets policy
 
@@ -84,8 +83,8 @@ chmod 600 /opt/flow-poc/secrets/unifi.env
 
 ## Current operational note
 
-For long-lived HTTPS/QUIC/proxy flows, raw IPFIX records may be exported every active timeout interval and can look like periodic spikes. The Device Drilldown dashboard currently uses hourly rollup throughput for the most stable view. A future duration-aware 5-minute rollup should distribute bytes across all buckets touched by a flow.
+For long-lived HTTPS/QUIC/proxy flows, raw IPFIX records may be exported every active timeout interval and can look like periodic spikes. The 5-minute rollup refresh distributes bytes and packets across the flow duration so short-window throughput is less sensitive to exporter active-timeout artifacts. The POC also maintains a 5-minute bidirectional conversation table/view that normalizes endpoint ordering and service port selection for operator investigations.
+
 ## Public template note
 
 This repository is a sanitized template. Replace example repo URLs, inventory sources, retention values, dashboard defaults, and deployment settings with values appropriate for your own environment. Do not commit real credentials, internal hostnames, screenshots, flow exports, or environment-specific expected-traffic notes.
-
