@@ -228,11 +228,12 @@
           },
           "format": 1,
           "queryType": "sql",
-          "rawSql": "SELECT toStartOfInterval(received_at, INTERVAL 30 SECOND) AS time, sum(packets) / 30 AS packets_per_sec FROM flow_poc.flows_enriched_external WHERE $__timeFilter(received_at) GROUP BY time ORDER BY time"
+          "rawSql": "SELECT bucket_start AS time, sum(packets) / 300 AS packets_per_sec FROM flow_poc.flow_rollup_5m WHERE $__timeFilter(bucket_start) GROUP BY time ORDER BY time"
         }
       ],
-      "title": "Packets/sec",
-      "type": "timeseries"
+      "title": "Packets/sec \u2014 5m Duration-Aware Rollup",
+      "type": "timeseries",
+      "description": "Packets/sec from duration-aware flow_rollup_5m: sum(packets) / 300. This avoids raw received_at export batching artifacts from long-lived flows."
     },
     {
       "datasource": {
