@@ -42,7 +42,7 @@
   "panels": [
     {
       "id": 1,
-      "title": "Device Throughput \u2014 1h Rollup",
+      "title": "Device Throughput \u2014 5m Duration-Aware Rollup",
       "type": "timeseries",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
@@ -61,7 +61,7 @@
             "uid": "clickhouse-flow-poc"
           },
           "format": 1,
-          "rawSql": "SELECT\n    bucket_start AS time,\n    sum(bytes) * 8 / 3600 AS bits_per_sec\nFROM flow_poc.flow_rollup_1h\nWHERE $__timeFilter(bucket_start)\n  AND (src_addr=${device:singlequote} OR dst_addr=${device:singlequote})\nGROUP BY time\nORDER BY time\n",
+          "rawSql": "SELECT\n    bucket_start AS time,\n    sum(bytes) * 8 / 300 AS bits_per_sec\nFROM flow_poc.flow_rollup_5m\nWHERE $__timeFilter(bucket_start)\n  AND (src_addr=${device:singlequote} OR dst_addr=${device:singlequote})\nGROUP BY time\nORDER BY time\n",
           "queryType": "sql"
         }
       ],
@@ -81,7 +81,7 @@
           "sort": "desc"
         }
       },
-      "description": "Stable device throughput from flow_rollup_1h: sum(bytes) * 8 / 3600. This intentionally uses hourly rollups to avoid IPFIX active-timeout artifacts in raw/5m flow records."
+      "description": "Duration-aware device throughput from flow_rollup_5m: sum(bytes) * 8 / 300. The 5m rollup distributes bytes/packets across flow_start\u2192flow_end buckets to reduce IPFIX active-timeout artifacts."
     },
     {
       "id": 2,
