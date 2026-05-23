@@ -65,12 +65,12 @@
           },
           "format": 1,
           "queryType": "sql",
-          "rawSql": "SELECT sum(bytes) * 8 / 300 AS bits_per_sec FROM flow_poc.flow_rollup_5m FINAL WHERE bucket_start >= now() - INTERVAL 5 MINUTE"
+          "rawSql": "SELECT coalesce(sum(bytes) * 8 / 300, 0) AS bits_per_sec\nFROM flow_poc.flow_rollup_5m FINAL\nWHERE bucket_start = (SELECT max(bucket_start) FROM flow_poc.flow_rollup_5m FINAL)"
         }
       ],
       "title": "FLOW VOLUME",
       "type": "stat",
-      "description": "Current observed network throughput from the duration-aware 5m rollup."
+      "description": "Current observed network throughput from the latest available duration-aware 5m rollup bucket. Uses latest bucket instead of now()-5m so the wallboard does not show false zero while rollups lag by a few minutes."
     },
     {
       "datasource": {
@@ -349,12 +349,12 @@
           },
           "format": 1,
           "queryType": "sql",
-          "rawSql": "SELECT sum(packets) / 300 AS packets_per_sec FROM flow_poc.flow_rollup_5m FINAL WHERE bucket_start >= now() - INTERVAL 5 MINUTE"
+          "rawSql": "SELECT coalesce(sum(packets) / 300, 0) AS packets_per_sec\nFROM flow_poc.flow_rollup_5m FINAL\nWHERE bucket_start = (SELECT max(bucket_start) FROM flow_poc.flow_rollup_5m FINAL)"
         }
       ],
       "title": "PACKETS",
       "type": "gauge",
-      "description": "Current packet rate from the duration-aware 5m rollup."
+      "description": "Current packet rate from the latest available duration-aware 5m rollup bucket. Uses latest bucket instead of now()-5m to avoid false zero between rollup refreshes."
     },
     {
       "datasource": {
@@ -757,12 +757,12 @@
           },
           "format": 1,
           "queryType": "sql",
-          "rawSql": "SELECT sum(flows) AS flows FROM flow_poc.flow_conversation_5m FINAL WHERE bucket_start >= now() - INTERVAL 5 MINUTE"
+          "rawSql": "SELECT coalesce(sum(flows), 0) AS flows\nFROM flow_poc.flow_conversation_5m FINAL\nWHERE bucket_start = (SELECT max(bucket_start) FROM flow_poc.flow_conversation_5m FINAL)"
         }
       ],
       "title": "CONVERSATIONS",
       "type": "stat",
-      "description": "Recent bidirectional conversation volume from the 5m conversation rollup."
+      "description": "Recent bidirectional conversation volume from the latest available 5m conversation rollup bucket."
     },
     {
       "datasource": {
