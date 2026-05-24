@@ -63,6 +63,7 @@ Edit `/opt/flow-poc/secrets/unifi.env` and replace `[REDACTED]` with real values
 docker exec -i clickhouse clickhouse-client --multiquery < /opt/flow-poc/flow_rollups.sql
 docker exec -i clickhouse clickhouse-client --multiquery < /opt/flow-poc/flow_baseline_views.sql
 docker exec -i clickhouse clickhouse-client --multiquery < /opt/flow-poc/external_ip_enrichment.sql
+docker exec -i clickhouse clickhouse-client --multiquery < /opt/flow-poc/dns_correlation.sql
 ```
 
 ## Manual runs
@@ -101,4 +102,5 @@ docker exec clickhouse clickhouse-client --query "SELECT max(received_at) FROM f
 docker exec clickhouse clickhouse-client --query "SELECT count() FROM flow_poc.device_inventory_current"
 docker exec clickhouse clickhouse-client --query "SELECT count(), max(bucket_start) FROM flow_poc.flow_rollup_5m"
 docker exec clickhouse clickhouse-client --query "SELECT count() FROM flow_poc.external_ip_enrichment_current"
+docker exec clickhouse clickhouse-client --query "SELECT count(), max(event_time) FROM flow_poc.dns_events"
 ```

@@ -20,6 +20,7 @@ GoFlow2 / flow exporter
   -> ClickHouse flow_poc.flows
   -> network inventory enrichment
   -> external ASN/org/PTR enrichment
+  -> optional DNS query/answer correlation datastore
   -> rollup tables and baseline views
   -> Grafana dashboards + scheduled reports
 ```
@@ -28,6 +29,7 @@ GoFlow2 / flow exporter
 
 - Network inventory enrichment for internal source/destination names.
 - External IP enrichment with ASN, organization, BGP prefix, country, and PTR.
+- DNS-ready datastore schema and flow correlation view for future resolver/firewall/endpoint DNS telemetry.
 - ClickHouse rollups at 5-minute, 1-hour, and 1-day grain.
 - Baseline/anomaly views for current-hour-vs-history, new external destinations, and new destination ports.
 - Grafana dashboards:
@@ -52,7 +54,7 @@ POC/local stand-ins:
 - Single-node ClickHouse/Kafka/Grafana deployment.
 - Root cron instead of centralized orchestration.
 - Local scripts instead of production CI/CD packaging.
-- Team Cymru/PTR enrichment only; no enterprise DNS/SNI/proxy-log correlation yet.
+- Team Cymru/PTR enrichment is live; DNS correlation schema is ready but requires enterprise resolver/firewall/endpoint DNS telemetry before it can provide real query attribution.
 
 Production gaps to address:
 

@@ -69,6 +69,7 @@ SQL
 echo "Applying ClickHouse schema..."
 docker exec -i flow-clickhouse clickhouse-client --multiquery < "$ROOT_DIR/sql/core_schema.sql"
 docker exec -i flow-clickhouse clickhouse-client --multiquery < "$ROOT_DIR/sql/external_ip_enrichment.sql"
+docker exec -i flow-clickhouse clickhouse-client --multiquery < "$ROOT_DIR/sql/dns_correlation.sql"
 docker exec -i flow-clickhouse clickhouse-client --multiquery < "$ROOT_DIR/sql/flow_rollups.sql"
 docker exec -i flow-clickhouse clickhouse-client --multiquery < "$ROOT_DIR/sql/flow_baseline_views.sql"
 docker exec -i flow-clickhouse clickhouse-client --multiquery < "$TMP_SQL"
