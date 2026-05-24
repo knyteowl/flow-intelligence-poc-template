@@ -154,7 +154,8 @@
                 }
               }
             }
-          ]
+          ],
+          "displayName": ""
         },
         "overrides": []
       },
@@ -187,7 +188,7 @@
           },
           "format": 1,
           "queryType": "sql",
-          "rawSql": "SELECT if(dateDiff('second', max(bucket_start), now()) <= 900, 1, 0) AS healthy FROM flow_poc.flow_rollup_5m FINAL"
+          "rawSql": "SELECT if(dateDiff('second', max(bucket_start), now()) <= 900, 1, 0) AS health_state FROM flow_poc.flow_rollup_5m FINAL"
         }
       ],
       "title": "FLOW HEALTH",
@@ -879,6 +880,6 @@
   "timezone": "browser",
   "title": "Flow Wallboard \u2014 Visual Status",
   "uid": "flow-wallboard",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
